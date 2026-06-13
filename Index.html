@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>NASA Schedule — Sat 13 Jun 2026</title>
+<style>
+  :root{
+    --bg:#0E1116; --surface:#171B22; --surface2:#1F242E;
+    --line:#2A313C; --text:#F2F4F7; --muted:#8B93A1;
+    --amber:#FFC02E; --amber-dim:rgba(255,192,46,.14);
+    --red:#FF4D43; --red-dim:rgba(255,77,67,.16);
+    --green:#4ADE80;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+    font-size:17px; line-height:1.3;
+    padding:0 0 env(safe-area-inset-bottom);
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:560px; margin:0 auto;}
+
+  /* ---- Header ---- */
+  header{
+    padding:calc(env(safe-area-inset-top) + 16px) 16px 12px;
+    text-align:center; border-bottom:1px solid var(--line);
+  }
+  header .org{font-size:13px; letter-spacing:.16em; color:var(--muted); font-weight:700; text-transform:uppercase;}
+  header h1{margin:4px 0 2px; font-size:22px; font-weight:800; letter-spacing:.01em;}
+  header .sub{font-size:13px; color:var(--muted);}
+
+  /* ---- Delay control (sticky) ---- */
+  .delay{
+    position:sticky; top:0; z-index:50;
+    background:rgba(14,17,22,.92); backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);
+    padding:10px 12px calc(10px);
+  }
+  .delay-label{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:12px; color:var(--muted); margin-bottom:8px; letter-spacing:.04em;
+    text-transform:uppercase; font-weight:700;
+  }
+  .delay-status{font-size:13px; font-weight:800;}
+  .delay-status.late{color:var(--red);}
+  .delay-status.ontime{color:var(--green);}
+  .delay-status.early{color:var(--amber);}
+  .stepper{display:flex; align-items:stretch; gap:8px;}
+  .stepper button.step{
+    flex:0 0 64px; font-size:30px; font-weight:700; color:var(--text);
+    background:var(--surface2); border:1px solid var(--line); border-radius:14px;
+    padding:8px 0; cursor:pointer; line-height:1;
+  }
+  .stepper button.step:active{background:var(--red-dim); border-color:var(--red);}
+  .readout{
+    flex:1; text-align:center; background:var(--surface); border:1px solid var(--line);
+    border-radius:14px; padding:6px; display:flex; flex-direction:column; justify-content:center;
+  }
+  .readout .num{
+    font-family:ui-monospace,"SF Mono",Menlo,monospace;
+    font-size:30px; font-weight:700; line-height:1;
+  }
+  .readout .unit{font-size:11px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; margin-top:3px;}
+  .chips{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;}
+  .chip{
+    flex:1; min-width:54px; text-align:center;
+    background:var(--surface); border:1px solid var(--line); color:var(--muted);
+    border-radius:10px; padding:8px 4px; font-size:13px; font-weight:700; cursor:pointer;
+  }
+  .chip:active{color:var(--text); border-color:var(--amber);}
+  .chip.reset{color:var(--green);}
+
+  /* ---- Schedule ---- */
+  .section-title{
+    font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted);
+    font-weight:800; padding:18px 16px 8px;
+  }
+  ul.sched{list-style:none; margin:0; padding:0 12px;}
+  li.row{
+    display:flex; gap:12px; align-items:flex-start;
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:14px; padding:12px 14px; margin-bottom:8px;
+    position:relative; overflow:hidden;
+  }
+  li.row .times{flex:0 0 86px;}
+  li.row .start{
+    font-family:ui-monospace,"SF Mono",Menlo,monospace;
+    font-size:18px; font-weight:700; letter-spacing:-.01em; white-space:nowrap;
+  }
+  li.row .end{
+    font-family:ui-monospace,"SF Mono",Menlo,monospace;
+    font-size:13px; color:var(--muted); white-space:nowrap; margin-top:1px;
+  }
+  li.row .body{flex:1; min-width:0; padding-top:1px;}
+  li.row .act{font-size:16px; font-weight:600; line-height:1.25;}
+  li.row .meta{font-size:12px; color:var(--muted); margin-top:3px;}
+  li.row .tag{
+    display:inline-block; font-size:11px; font-weight:800; letter-spacing:.04em;
+    padding:2px 7px; border-radius:6px; margin-top:6px;
+  }
+  .tag.check{background:rgba(255,77,67,.14); color:var(--red);}
+  .tag.money{background:rgba(74,222,128,.14); color:var(--green);}
+
+  /* my run groups (the red-marked rows) */
+  li.row.mine{
+    background:#15314F; border-color:#3B9EFF;
+  }
+  li.row.mine::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:#3B9EFF;
+  }
+  li.row.mine .act{font-weight:800; color:#FFFFFF;}
+  li.row.mine .start{color:#7CC4FF;}
+  li.row.mine .end{color:#A9C7E6;}
+  li.row.mine .pin{
+    font-size:11px; font-weight:800; color:#0B1B2E; background:#7CC4FF;
+    padding:2px 7px; border-radius:6px; letter-spacing:.04em; display:inline-block; margin-top:6px;
+  }
+
+  /* break / info rows */
+  li.row.info{background:var(--surface2); border-style:dashed;}
+  li.row.info .act{font-weight:600; color:var(--muted); font-style:italic;}
+
+  /* happening now */
+  li.row.now{box-shadow:0 0 0 2px var(--green); }
+  li.row.now .live{
+    font-size:11px; font-weight:800; color:var(--green); letter-spacing:.08em;
+    display:inline-flex; align-items:center; gap:5px; margin-top:6px;
+  }
+  li.row.now .dot{width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 1.4s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+  /* ---- Reference (collapsible) ---- */
+  details{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    margin:0 12px 8px; padding:0 14px;
+  }
+  details summary{
+    list-style:none; cursor:pointer; padding:14px 0; font-weight:700; font-size:15px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  details summary::-webkit-details-marker{display:none;}
+  details summary::after{content:"+"; color:var(--muted); font-size:22px; font-weight:400;}
+  details[open] summary::after{content:"–";}
+  .def{padding:0 0 12px; border-top:1px solid var(--line);}
+  .def .item{padding:9px 0; border-bottom:1px solid var(--line);}
+  .def .item:last-child{border-bottom:none;}
+  .def .k{font-weight:800; font-size:14px;}
+  .def .v{font-size:14px; color:var(--muted); margin-top:1px;}
+
+  footer{padding:18px 16px 28px; text-align:center; color:var(--muted); font-size:12px; line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="org">National Auto Sport Association</div>
+    <h1>Saturday • 13 Jun 2026</h1>
+    <div class="sub">8:00 AM mandatory driver's meeting — café · Schedule v6.10.0001 · Subject to change</div>
+  </header>
+
+  <div class="delay">
+    <div class="delay-label">
+      <span>Running behind by</span>
+      <span class="delay-status ontime" id="status">On schedule</span>
+    </div>
+    <div class="stepper">
+      <button class="step" onclick="bump(-5)" aria-label="5 minutes earlier">−</button>
+      <div class="readout">
+        <div class="num" id="offset">0</div>
+        <div class="unit">minutes</div>
+      </div>
+      <button class="step" onclick="bump(5)" aria-label="5 minutes later">+</button>
+    </div>
+    <div class="chips">
+      <div class="chip" onclick="bump(5)">+5</div>
+      <div class="chip" onclick="bump(10)">+10</div>
+      <div class="chip" onclick="bump(15)">+15</div>
+      <div class="chip" onclick="bump(30)">+30</div>
+      <div class="chip reset" onclick="reset()">Reset</div>
+    </div>
+  </div>
+
+  <div class="section-title">Run schedule</div>
+  <ul class="sched" id="sched"></ul>
+
+  <details>
+    <summary>HPDE group definitions</summary>
+    <div class="def">
+      <div class="item"><div class="k">HPDE Intro</div><div class="v">Toyota GR owners. Lead-follow & instructor sessions, passing on main straights only.</div></div>
+      <div class="item"><div class="k">HPDE 1 — Novice</div><div class="v">Instructor assigned, passing on main straights only.</div></div>
+      <div class="item"><div class="k">HPDE 2 — Beginner</div><div class="v">Instructors optional but encouraged. Passing on main straights only.</div></div>
+      <div class="item"><div class="k">HPDE 3 — Intermediate</div><div class="v">Passing areas more liberal, increasing as the day progresses.</div></div>
+      <div class="item"><div class="k">HPDE 4 — Advanced</div><div class="v">Passing allowed anywhere using caution.</div></div>
+      <div class="item"><div class="k">Time Trial — Advanced</div><div class="v">Passing anywhere using caution. Compete for fastest lap times.</div></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>Race group definitions</summary>
+    <div class="def">
+      <div class="item"><div class="k">Group A</div><div class="v">All other classes</div></div>
+      <div class="item"><div class="k">Group B</div><div class="v">SE30 / SE46 / Spec3</div></div>
+      <div class="item"><div class="k">Group C</div><div class="v">944 Spec / SM</div></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>Officials</summary>
+    <div class="def">
+      <div class="item"><div class="k">Event Director</div><div class="v">Adam Ginsberg</div></div>
+      <div class="item"><div class="k">Registration</div><div class="v">Kathy Ginsberg</div></div>
+      <div class="item"><div class="k">Race Director</div><div class="v">Steve Stepanian</div></div>
+      <div class="item"><div class="k">GR / HPDE1 Tech Leader</div><div class="v">Nick Vassilakas</div></div>
+      <div class="item"><div class="k">HPDE 1/2 Leader</div><div class="v">Patrick Orozco</div></div>
+      <div class="item"><div class="k">HPDE 3/4 Leader</div><div class="v">John Matthew</div></div>
+      <div class="item"><div class="k">Chief Instructor</div><div class="v">Fulton Haight</div></div>
+      <div class="item"><div class="k">Time Trial Series Leader</div><div class="v">Stu Clott</div></div>
+      <div class="item"><div class="k">Chief of Comms & Control</div><div class="v">Christina Moreno</div></div>
+      <div class="item"><div class="k">Chief of Timing & Scoring</div><div class="v">Victoria Orozco</div></div>
+      <div class="item"><div class="k">Technical Team</div><div class="v">Joey Zhou, James Faulkner</div></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>Gates, tech & registration</summary>
+    <div class="def">
+      <div class="item"><div class="k">Gates open — 24 hrs</div><div class="v">$20 gate fee. Must vacate by 7 PM Sunday.</div></div>
+      <div class="item"><div class="k">Friday 2–5 PM</div><div class="v">Tech & registration open</div></div>
+      <div class="item"><div class="k">Sat/Sun 7:00 AM</div><div class="v">Tech & registration open</div></div>
+    </div>
+  </details>
+
+  <footer>
+    Times shift uniformly by the delay above — durations stay the same.<br>
+    Your run groups (HPDE Intro / 1 &amp; 2) are highlighted in blue.
+  </footer>
+
+</div>
+
+<script>
+// minutes-from-midnight helpers
+const sched = [
+  {s:460,e:475,a:"Instructor Meeting",m:"Patio"},
+  {s:480,e:500,a:"Race Group A — Warmup",tag:"check"},
+  {s:500,e:520,a:"Race Group B — Warmup",tag:"check"},
+  {s:520,e:540,a:"Race Group C — Warmup",tag:"check"},
+  {s:540,e:560,a:"Time Trial — S1"},
+  {s:560,e:580,a:"HPDE 3 & 4 (S1)"},
+  {s:580,e:585,a:"Course Check",info:true,m:"Time permitting"},
+  {s:585,e:605,a:"Race Group A — Qualifying",tag:"check"},
+  {s:605,e:625,a:"HPDE Intro (GR), HPDE 1 & 2 (S1)",mine:true},
+  {s:625,e:645,a:"Race Group B — Qualifying",tag:"check"},
+  {s:645,e:665,a:"Time Trial — S2"},
+  {s:665,e:685,a:"Race Group C — Qualifying",tag:"check"},
+  {s:685,e:705,a:"HPDE 3 & 4 (S2)"},
+  {s:705,e:705,a:"Race Group A,B,C — Drivers Meeting",info:true,m:"Cafeteria (Sat & Sun)"},
+  {s:705,e:725,a:"HPDE Intro (GR), HPDE 1 & 2 (S2)",mine:true},
+  {s:725,e:775,a:"Lunch Break & Course Check",info:true},
+  {s:775,e:805,a:"Race Group A — Race",tag:"money"},
+  {s:805,e:810,a:"Course Check",info:true,m:"Time permitting"},
+  {s:810,e:830,a:"Time Trial — S3"},
+  {s:830,e:860,a:"Race Group B — Race",tag:"money"},
+  {s:860,e:880,a:"HPDE 3 & 4 (S3)"},
+  {s:880,e:910,a:"Race Group C — Race",tag:"money"},
+  {s:910,e:915,a:"Course Check",info:true,m:"Time permitting"},
+  {s:915,e:935,a:"HPDE Intro (GR), HPDE 1 & 2 (S3)",mine:true},
+  {s:935,e:955,a:"HPDE 3 & 4 (S4)"},
+  {s:955,e:975,a:"HPDE Intro (GR), HPDE 1 & 2 (S4)",mine:true},
+  {s:975,e:980,a:"Course Check",info:true,m:"Time permitting"},
+  {s:980,e:1000,a:"Time Trial — S4"},
+  {s:1000,e:1020,a:"HPDE 3 & 4 (Bonus)"},
+  {s:1050,e:null,a:"Beer Garden — patio cover w/ Grip-n-Drift",info:true,m:"Thanks for joining us!"}
+];
+
+let offset = 0;
+
+function fmt(min){
+  if(min===null) return "";
+  min = ((min % 1440) + 1440) % 1440;
+  let h = Math.floor(min/60), m = min%60;
+  const ap = h>=12 ? "PM":"AM";
+  let h12 = h%12; if(h12===0) h12=12;
+  return h12 + ":" + String(m).padStart(2,"0") + " " + ap;
+}
+
+function render(){
+  document.getElementById("offset").textContent = offset;
+  const st = document.getElementById("status");
+  if(offset===0){ st.textContent="On schedule"; st.className="delay-status ontime"; }
+  else if(offset>0){ st.textContent=offset+" min late"; st.className="delay-status late"; }
+  else { st.textContent=Math.abs(offset)+" min ahead"; st.className="delay-status early"; }
+
+  // current device time in minutes (for "now" highlight)
+  const now = new Date();
+  const nowMin = now.getHours()*60 + now.getMinutes();
+
+  const ul = document.getElementById("sched");
+  ul.innerHTML = "";
+  sched.forEach(r=>{
+    const s = r.s + offset;
+    const e = r.e===null ? null : r.e + offset;
+    const li = document.createElement("li");
+    li.className = "row" + (r.mine?" mine":"") + (r.info?" info":"");
+    if(e!==null && nowMin>=s && nowMin<e) li.className += " now";
+
+    let tagHtml = "";
+    if(r.mine) tagHtml = '<span class="pin">YOUR RUN GROUP</span>';
+    else if(r.tag==="check") tagHtml = '<span class="tag check">Check transponders</span>';
+    else if(r.tag==="money") tagHtml = '<span class="tag money">Timed race · $$$</span>';
+
+    const liveHtml = (e!==null && nowMin>=s && nowMin<e)
+      ? '<div class="live"><span class="dot"></span>HAPPENING NOW</div>' : "";
+
+    li.innerHTML =
+      '<div class="times">'+
+        '<div class="start">'+fmt(s)+'</div>'+
+        (e!==null ? '<div class="end">→ '+fmt(e)+'</div>' : '')+
+      '</div>'+
+      '<div class="body">'+
+        '<div class="act">'+r.a+'</div>'+
+        (r.m ? '<div class="meta">'+r.m+'</div>' : '')+
+        tagHtml + liveHtml +
+      '</div>';
+    ul.appendChild(li);
+  });
+}
+
+function bump(n){ offset += n; render(); }
+function reset(){ offset = 0; render(); }
+
+render();
+setInterval(render, 30000); // refresh "now" highlight
+</script>
+</body>
+</html>
